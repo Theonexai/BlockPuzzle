@@ -503,4 +503,39 @@ body.modal-open #w.show #go{pointer-events:auto;user-select:auto}
 .adv-cstar.lit{opacity:1;transform:scale(1)}
 #adv-complete-score{font-size:32px;font-weight:900;color:#f0e060;margin:8px 0}
 #adv-complete-next{width:100%;padding:13px;background:linear-gradient(135deg,#1ecfb0,#0aa890);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;touch-action:manipulation}
-#adv-complete-map{width:100%;padding:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;color:#ccc;font-size:13px;cursor:pointer;touch-action:manipulation}
+#adv-complete-map{width:100%;padding:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;color:#ccc;font-size:13px;cursor:pointer;touch-action:manipulation}/* Visual theme: quiet navy surfaces, mint actions, warm gold blocks. */
+:root{color-scheme:dark;--surface:#122436;--edge:#294257;--mint:#8ce8c5;--ink:#eef5f7}
+body{background:#07121e;color:var(--ink);font-family:'Segoe UI',system-ui,sans-serif}
+#lobby,#w,#adv-map-screen{background:radial-gradient(ellipse at 80% 0%,#203e51 0%,#102235 45%,#0b1929 100%);box-shadow:0 24px 100px #0008}
+#lobby{padding:28px 22px;overflow-y:auto}
+.lb-glow{background:radial-gradient(circle,#8ce8c515,transparent 70%);animation:none}
+.lb-title{font-size:44px;letter-spacing:-2px;text-shadow:none;line-height:1.08}
+.lb-sub{color:#a2b8c8;font-size:11px;letter-spacing:4px;margin-top:10px;margin-bottom:28px}
+#lb-board{gap:5px;transform:rotate(-4deg);margin-bottom:28px}
+.lb-cell{background:#1b3247;border-color:#2c485e;border-radius:7px}
+.lb-cell.on{background:#e9b969;border-color:#f3d39a;box-shadow:inset 0 2px 0 #ffe5b0,inset 0 -3px 0 #ba843d}
+.lb-stats{gap:0;width:100%;max-width:320px;background:#142c40;border:1px solid var(--edge);border-radius:16px;padding:14px 0;margin-bottom:22px}
+.lb-stat{flex:1}.lb-stat+.lb-stat{border-left:1px solid var(--edge)}
+.lb-stat span{color:#a2b8c8;font-size:10px}.lb-stat strong{font-variant-numeric:tabular-nums;color:#f2cb87}
+#lb-play{width:100%;max-width:320px;background:var(--mint);color:#102b28;border-radius:14px;padding:17px 24px;box-shadow:0 6px 0 #429d82;font-size:18px;margin-bottom:20px}
+.lb-btn{background:#172d40;border-color:#355064;color:#c8d9e3;min-height:42px;border-radius:12px}
+#lb-chest{background:#172d40;border-color:#355064;border-radius:16px;padding:14px}
+#lb-chest-status,#chest-gems{color:#adc0cc}
+#lb-ad-banner,#game-ad{opacity:.45}
+#w{gap:8px;padding-left:12px;padding-right:12px}
+#sb{padding:8px 2px}.sc{font-size:32px;font-variant-numeric:tabular-nums;letter-spacing:-1px}.best{color:#e5bf7c}
+#home-btn{min-height:40px;border-color:var(--edge);background:#1c3549;border-radius:12px;color:#dbe7ec}
+#obj-bar{background:#172e42;border:1px solid var(--edge);border-radius:12px;padding:10px}
+#obj-main{color:#e6f2f5}#obj-sub{color:#a7bdcc}
+#bc{background:#0c1b2a;border:2px solid #3c596c;border-radius:15px;padding:7px;box-shadow:0 10px 30px #0004}
+.cell{background:#1a3044;border:1px solid #263e52;border-radius:5px}
+.cell.on,.pc{background:#e6b665;border-color:#f4d294;box-shadow:inset 0 2px 0 #ffe2a0,inset 0 -2px 0 #ad7738}
+#tray{gap:8px;padding-top:8px}.ts{border-radius:13px;background:#162d41;border-color:#365166}
+.ts.hs{background:#1b3b43;border-color:#5c9a91}.hl2{color:#9bddc7;letter-spacing:2px}
+.sbtn{background:#192f43;border-color:#3b5367;border-radius:12px;color:#deebf0;min-height:44px}
+#chest-bar{background:#142a3d;border:1px solid var(--edge);border-radius:12px;padding:7px 10px}
+.modal-box,#ch-result-box,#chest-modal-box,#adv-complete-box,#adv-fail-box,#adv-save-box,#adv-chest-box{background:#142a3e;border:1px solid #3c596c;border-radius:22px;box-shadow:0 24px 80px #0008}
+.modal-close{color:#d0dfe7;min-height:44px}
+button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--mint);outline-offset:4px}
+#w.resolving #tray,#w.resolving #shop{pointer-events:none}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

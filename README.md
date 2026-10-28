@@ -2,7 +2,7 @@
 
 > **Version 5.2** — by [Sunil Malleshaiah](https://github.com/SunilCap)
 
-A mobile-first block puzzle game built as a single-file PWA. Drag pieces onto a 10×10 board, clear rows and columns, and build your score.
+A mobile-first block puzzle game built with plain HTML, CSS, and JavaScript. Drag pieces onto a 10×10 board, clear rows and columns, and build your score.
 
 ## Play
 
@@ -25,13 +25,13 @@ Open `index.html` directly in any modern browser — no server needed. Or deploy
 ## File Structure
 
 ```
-index.html   — Complete self-contained game (single file, no dependencies)
-game.js      — Extracted game logic (for review / version tracking)
-style.css    — Extracted styles (for review / version tracking)
+index.html   - Game markup and asset references
+game.js      - Game logic (single source of truth)
+style.css    - Styles and visual theme
 README.md    — This file
 ```
 
-> `index.html` is the deployable file — fully self-contained with all CSS and JS inline.
+> Deploy `index.html`, `game.js`, and `style.css` together. No build step is required.
 
 ## Economy
 

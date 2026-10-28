@@ -223,6 +223,7 @@ function getMonthTrophies(month,year){
 
 // Challenge state during gameplay
 var isChallenge=false,challengeEnding=false;
+var gameEpoch=0, resolvingMove=false;
 var challengeDay=0,challengeMonth=0,challengeYear=0,challengeDiff=0;
 var challengePieceQueue=[],challengePieceIndex=0;
 
@@ -233,7 +234,7 @@ function updateObjBar(){
   var bar=document.getElementById('obj-bar');
   if(isChallenge){
     var diff=challengeDiff;
-    var used=Math.min(challengePieceIndex,30);
+    var used=Math.max(0,challengePieceIndex-pieces.filter(Boolean).length-(held?1:0)-(held2?1:0));
     var total=30;
     var pct=Math.round((used/total)*100);
     main.textContent='📅 Day '+challengeDay+' · '+DIFF_NAMES[diff]+' '+DIFF_ICONS[diff];
@@ -261,15 +262,7 @@ function startChallenge(day,month,year){
 }
 
 function rndChallenge(){
-  // If queue exhausted — challenge is complete, end it
-  if(challengePieceIndex>=challengePieceQueue.length){
-    // Delay so current board render finishes first
-    setTimeout(function(){
-      if(isChallenge)finishChallenge();
-    },400);
-    // Return a dummy piece (won't be seen — game ends)
-    return SHAPES[0];
-  }
+  if(challengePieceIndex>=challengePieceQueue.length)return null;
   var idx=challengePieceQueue[challengePieceIndex++];
   setTimeout(updateObjBar,0);
   return SHAPES[idx];
@@ -291,7 +284,8 @@ function fireConfetti(){
 }
 
 function finishChallenge(){
-  if(!isChallenge)return;
+  if(!isChallenge||challengeEnding)return;
+  challengeEnding=true;
   isChallenge=false; // mark done before async ops
   cancelHint();
   var day=challengeDay,month=challengeMonth,year=challengeYear,diff=challengeDiff;
@@ -312,8 +306,10 @@ function finishChallenge(){
   SFX.trophy();
   fireConfetti();
   updateQuestProgress('challenge',1);
-  // Short delay so confetti starts before modal appears
+  // Ignore results from a game the player has already left.
+  var resultEpoch=gameEpoch;
   setTimeout(function(){
+    if(resultEpoch!==gameEpoch)return;
     showChallengeResult(day,month,year,diff,isFirstCompletion,isNewBest,existing);
   },600);
 }
@@ -735,6 +731,7 @@ function goToGame(){
   if(!isChallenge)initGame();
 }
 function goHome(){
+  gameEpoch++;resolvingMove=false;
   isChallenge=false;
   challengeEnding=false;
   if(advMode)resetAdvMode();
@@ -938,7 +935,7 @@ var rnd=function(){
   return SHAPES[Math.floor(Math.random()*SHAPES.length)];
 };
 
-var boardCs=function(){var b=document.getElementById('bc');if(!b)return 36;var rect=b.getBoundingClientRect();return(rect.width-6)/10-2;};
+var boardCs=function(){var b=document.getElementById('board');if(!b)return 36;return (b.getBoundingClientRect().width-18)/10;};
 var slotW=function(id){var e=document.getElementById(id);if(!e)return 56;var r=e.getBoundingClientRect();return r.width>0?r.width-14:56;};
 function slotInnerH(id){var e=document.getElementById(id);if(!e)return 50;var r=e.getBoundingClientRect();return Math.max(30,r.height-18);}
 function fitCs(sh,W,H){var g=2,cc=sh[0].length,rr=sh.length;var byW=Math.floor((W-g*(cc-1))/cc);var byH=Math.floor((H-g*(rr-1))/rr);return Math.max(4,Math.min(byW,byH,16));}
@@ -1057,6 +1054,8 @@ function updateShopBtns(){
 
 function saveState(){
   var state={grid:grid.map(function(r){return r.slice();}),pieces:pieces.slice(),held:held,held2:held2,score:score,combo:combo,totalLines:totalLines};
+  state.challengePieceIndex=challengePieceIndex;
+  state.rotatedSlots=Object.assign({},rotatedSlots);
   if(advMode){
     state.advColorGrid=advColorGrid.map(function(r){return r.slice();});
     state.advIceGrid=advIceGrid.map(function(r){return r.slice();});
@@ -1066,7 +1065,7 @@ function saveState(){
   lastState=state;
   updateShopBtns();
 }
-function shopUndo(){
+function shopUndo(){if(resolvingMove||challengeEnding)return;
   if(blastMode)cancelBlast();questUndoUsed=true;
   if(rotateMode){cancelRotate();return;}
   if(!lastState||stars<3)return;
@@ -1083,13 +1082,15 @@ function shopUndo(){
     advBlockGrid=lastState.advBlockGrid.map(function(r){return r.slice();});
     advObjProgress=JSON.parse(JSON.stringify(lastState.advObjProgress));
   }
-  lastState=null;rotatedSlots={};
+  challengePieceIndex=lastState.challengePieceIndex;
+  rotatedSlots=lastState.rotatedSlots||{};
+  lastState=null;
   syncBoard(); // also calls renderAdvCellStyles via hook
   renderTray();updateShopBtns();hideToast();
   checkState(pieces.slice(),held,held2);
 }
-function shopShuffle(){if(blastMode)cancelBlast();updateQuestProgress('powerup',1);if(rotateMode){cancelRotate();return;}if(stars<2||pieces.every(function(p){return p===null;}))return;spendStars(2);rotatedSlots={};for(var i=0;i<3;i++)if(pieces[i]!==null)pieces[i]=rnd();renderTray();checkState(pieces.slice(),held,held2);}
-function shopRotate(){if(blastMode)cancelBlast();if(rotateMode){cancelRotate();return;}if(stars<1||pieces.every(function(p){return p===null;}))return;rotateMode=true;updateShopBtns();setRotateHandlers();showToast('🔄 Tap any piece to rotate (even locked) · 1⭐ on placement','info');}
+function shopShuffle(){if(resolvingMove||challengeEnding)return;if(isChallenge){showToast('Shuffle is unavailable in a seeded challenge.','info');return;}if(blastMode)cancelBlast();updateQuestProgress('powerup',1);if(rotateMode){cancelRotate();return;}if(stars<2||pieces.every(function(p){return p===null;}))return;spendStars(2);rotatedSlots={};for(var i=0;i<3;i++)if(pieces[i]!==null)pieces[i]=rnd();renderTray();checkState(pieces.slice(),held,held2);}
+function shopRotate(){if(resolvingMove||challengeEnding)return;if(blastMode)cancelBlast();if(rotateMode){cancelRotate();return;}if(stars<1||pieces.every(function(p){return p===null;}))return;rotateMode=true;updateShopBtns();setRotateHandlers();showToast('🔄 Tap any piece to rotate (even locked) · 1⭐ on placement','info');}
 function cancelRotate(){rotateMode=false;rotatedSlots={};updateShopBtns();hideToast();renderTray();}
 function shopHold2(){}
 
@@ -1291,10 +1292,12 @@ function doRotatePiece(idx){if(!pieces[idx])return;pieces[idx]=rotateCW(trimShap
 
 function showToast(msg,type){clearTimeout(toastTimer);var t=document.getElementById('toast');t.textContent=msg;t.className='show '+(type||'err');toastTimer=setTimeout(function(){t.className='';},4000);}
 function hideToast(){clearTimeout(toastTimer);document.getElementById('toast').className='';}
-function mkGrid(sh,W,H,ht){var cs=fitCs(sh,W,H),pg=document.createElement('div');pg.className='pgrid';pg.style.gridTemplateColumns='repeat('+sh[0].length+','+cs+'px)';pg.style.gridTemplateRows='repeat('+sh.length+','+cs+'px)';pg.style.gap='2px';for(var r=0;r<sh.length;r++)for(var c=0;c<sh[r].length;c++){var d=document.createElement('div');d.style.width=d.style.height=cs+'px';var v=sh[r][c];if(v){var cls='pc'+(ht===2?' hd2':ht===1?' hd':'');if(v===2)cls+=' adv-colored';d.className=cls;}else{d.style.background='transparent';d.style.border='none';}pg.appendChild(d);}return pg;}
-function mkDragGrid(sh,ht){var cs=boardCs()+2,pg=document.createElement('div');pg.className='pgrid';pg.style.gridTemplateColumns='repeat('+sh[0].length+','+cs+'px)';pg.style.gridTemplateRows='repeat('+sh.length+','+cs+'px)';pg.style.gap='2px';for(var r=0;r<sh.length;r++)for(var c=0;c<sh[r].length;c++){var d=document.createElement('div');d.style.width=d.style.height=cs+'px';var v=sh[r][c];if(v){var cls='pc'+(ht===2?' hd2':ht===1?' hd':'');if(v===2)cls+=' adv-colored';d.className=cls;}else{d.style.background='transparent';d.style.border='none';}pg.appendChild(d);}return pg;}
+function mkGrid(sh,W,H,ht){return buildPieceGrid(sh,fitCs(sh,W,H),ht);}
+function buildPieceGrid(sh,cs,ht){var pg=document.createElement('div');pg.className='pgrid';pg.style.gridTemplateColumns='repeat('+sh[0].length+','+cs+'px)';pg.style.gridTemplateRows='repeat('+sh.length+','+cs+'px)';pg.style.gap='2px';for(var r=0;r<sh.length;r++)for(var c=0;c<sh[r].length;c++){var d=document.createElement('div');d.style.width=d.style.height=cs+'px';var v=sh[r][c];if(v){var cls='pc'+(ht===2?' hd2':ht===1?' hd':'');if(v===2)cls+=' adv-colored';d.className=cls;}else{d.style.background='transparent';d.style.border='none';}pg.appendChild(d);}return pg;}
+function mkDragGrid(sh,ht){return buildPieceGrid(sh,boardCs()+2,ht);}
 
 function clearLines(onDone){
+  var epoch=gameEpoch;
   if(advInitializing){if(onDone)onDone(0);return;}
   var rows=[],cols=[];
   for(var r=0;r<ROWS;r++){if(grid[r].every(function(v){return v;})){// Only clear if player placed at least one cell (not all pre-filled ice)
@@ -1348,10 +1351,12 @@ function clearLines(onDone){
     }
   });
 
+  resolvingMove=true;
   // Blast animation on clearable cells
   cells.forEach(function(item){
     var delay=Math.round(item.dist)*STAGGER;
     setTimeout(function(){
+      if(epoch!==gameEpoch)return;
       item.el.classList.remove('flash');
       item.el.classList.add('blast-out');
     },delay);
@@ -1361,6 +1366,8 @@ function clearLines(onDone){
 
   var totalAnim=Math.round(4.5)*STAGGER+320+60;
   setTimeout(function(){
+    if(epoch!==gameEpoch)return;
+    resolvingMove=false;
     // Count cleared blocks (excluding iced cells — they already reduced stage above)
     if(advMode)advTrackClearBlocks(rows,cols);
 
@@ -1418,15 +1425,16 @@ function triggerGameOver(){
   if(advMode&&!advLevelComplete){showAdvFailed();return;}
   hideSavePrompt();
   // Challenge game over mid-challenge — just end it with current score
-  if(isChallenge){finishChallenge();return;}
+  if(isChallenge){isChallenge=false;cancelHint();}
   document.getElementById('gsc').textContent=score;document.getElementById('gbc').textContent=best;
   document.getElementById('glc').textContent=totalLines;document.getElementById('gst').textContent='+'+starsGame+'⭐';
   document.getElementById('go').classList.add('show');
   document.getElementById('w').classList.add('game-over');
 }
-function checkState(pArr,h,h2){if(tryAutoStore(pArr,h,h2))return;var rem=pArr.filter(function(p){return p;});updatePlacability();updateShopBtns();if(rem.some(function(p){return canPlaceAnywhere(p);})){if(!rotateMode)hideToast();scheduleHint();return;}if(h&&canPlaceAnywhere(h)){if(!rotateMode)hideToast();scheduleHint();return;}if(h2&&canPlaceAnywhere(h2)){if(!rotateMode)hideToast();scheduleHint();return;}cancelHint();showSavePrompt(pArr);}
+function checkState(pArr,h,h2){updateObjBar();if(isChallenge&&challengePieceIndex>=challengePieceQueue.length&&pArr.every(function(p){return !p;})&&!h&&!h2){finishChallenge();return;}if(tryAutoStore(pArr,h,h2))return;var rem=pArr.filter(function(p){return p;});updatePlacability();updateShopBtns();if(rem.some(function(p){return canPlaceAnywhere(p);})){if(!rotateMode)hideToast();scheduleHint();return;}if(h&&canPlaceAnywhere(h)){if(!rotateMode)hideToast();scheduleHint();return;}if(h2&&canPlaceAnywhere(h2)){if(!rotateMode)hideToast();scheduleHint();return;}cancelHint();showSavePrompt(pArr);}
 
 function initGame(){
+  gameEpoch++;resolvingMove=false;challengeEnding=false;
   hideSavePrompt();
   if(typeof blastMode!=='undefined'&&blastMode)cancelBlast();
   grid=[];for(var r=0;r<ROWS;r++){grid.push([]);for(var c=0;c<COLS;c++)grid[r].push(0);}
@@ -1476,8 +1484,8 @@ function renderHold(){var s=document.getElementById('hs'),inn=document.getElemen
 function renderHold2(){var s=document.getElementById('hs2'),inn=document.getElementById('hi2');if(!s||!inn)return;inn.innerHTML='';s.classList.remove('full','blk');s.onmousedown=null;s.ontouchstart=null;if(held2){s.classList.add('full');inn.appendChild(mkGrid(held2,slotW('hs2')||52,slotInnerH('hs2'),2));}}
 function renderSlot(i){var s=document.getElementById('p'+i);if(!s)return;s.innerHTML='';if(!pieces[i]){s.className='ts ps used';s.style.pointerEvents='none';s.onmousedown=null;s.ontouchstart=null;return;}var ok=canPlaceAnywhere(pieces[i]);var wasRotated=!!rotatedSlots[i];s.className='ts ps'+(ok?'':' blk')+(wasRotated?' rotated':'');s.style.pointerEvents=rotateMode?'auto':(ok?'auto':'none');s.onmousedown=null;s.ontouchstart=null;if(!rotateMode&&ok){s.onmousedown=(function(idx){return function(e){beginDrag(e,idx,false,false);};})(i);s.ontouchstart=(function(idx){return function(e){beginTouch(e,idx,false,false);};})(i);}s.appendChild(mkGrid(pieces[i],slotW('p'+i),slotInnerH('p'+i),0));}
 
-function beginDrag(e,idx,fh,fh2){if(blastMode)return;var piece=fh2?held2:fh?held:pieces[idx];if(!piece)return;e.preventDefault();cancelHint();dragging=true;dragSlot=idx;dragFromHold=fh;dragFromHold2=fh2;dragPiece=piece;spawnDragEl(e.clientX,e.clientY);document.addEventListener('mousemove',onMv);document.addEventListener('mouseup',onUp);}
-function beginTouch(e,idx,fh,fh2){if(blastMode)return;var piece=fh2?held2:fh?held:pieces[idx];if(!piece)return;e.preventDefault();cancelHint();dragging=true;dragSlot=idx;dragFromHold=fh;dragFromHold2=fh2;dragPiece=piece;var t=e.touches[0];spawnDragEl(t.clientX,t.clientY);document.addEventListener('touchmove',onMvT,{passive:false});document.addEventListener('touchend',onUpT);}
+function beginDrag(e,idx,fh,fh2){if(resolvingMove||challengeEnding)return;if(blastMode)return;var piece=fh2?held2:fh?held:pieces[idx];if(!piece)return;e.preventDefault();cancelHint();dragging=true;dragSlot=idx;dragFromHold=fh;dragFromHold2=fh2;dragPiece=piece;spawnDragEl(e.clientX,e.clientY);document.addEventListener('mousemove',onMv);document.addEventListener('mouseup',onUp);}
+function beginTouch(e,idx,fh,fh2){if(resolvingMove||challengeEnding)return;if(blastMode)return;var piece=fh2?held2:fh?held:pieces[idx];if(!piece)return;e.preventDefault();cancelHint();dragging=true;dragSlot=idx;dragFromHold=fh;dragFromHold2=fh2;dragPiece=piece;var t=e.touches[0];spawnDragEl(t.clientX,t.clientY);document.addEventListener('touchmove',onMvT,{passive:false});document.addEventListener('touchend',onUpT);}
 function spawnDragEl(cx,cy){
   dragOriginX=cx;dragOriginY=cy;
   if(_ghostRafId){cancelAnimationFrame(_ghostRafId);_ghostRafId=null;}
@@ -2214,10 +2222,6 @@ var advObjProgress={};   // progress per objective type
 var advLevelComplete=false;
 
 // ── Save/Load progress ──
-function getAdvProgress(){
-  try{return JSON.parse(localStorage.getItem('bp_adv_progress')||'{}');}catch(e){return{};}
-}
-function saveAdvProgress(p){try{localStorage.setItem('bp_adv_progress',JSON.stringify(p));}catch(e){}}
 function getAdvUnlocked(){var p=getAdvProgress();return p.unlocked||1;}
 function getAdvStars(levelId){var p=getAdvProgress();return (p.stars&&p.stars[levelId])||0;}
 function saveAdvLevelResult(levelId,stars){
@@ -2569,7 +2573,8 @@ function startAdvLevel(lvl,savedState){
   isChallenge=true; // trick: goToGame skips initGame when isChallenge=true
   goToGame();
   isChallenge=false;
-  setTimeout(function(){advInitializing=false;},100);
+  advInitializing=false;
+  renderTray();checkState(pieces.slice(),held,held2);
 }
 
 // Apply visual ice/block styling to cells
@@ -2897,7 +2902,7 @@ function advColorizePiece(shape){
 }
 function rndWithColor(slotIdx){
   var shape=rnd();
-  if(advMode)shape=advColorizePiece(shape); // embed colour into shape matrix
+  if(advMode&&shape)shape=advColorizePiece(shape); // embed colour into shape matrix
   return shape;
 }
 var DESIGN_W=390,DESIGN_H=844;
